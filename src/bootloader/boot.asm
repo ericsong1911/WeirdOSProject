@@ -72,11 +72,22 @@ main:
     mov ss, ax
     mov sp, 0x7C00 ; stack grows downwards from where we are loaded in memory    
 
+    ; read something from floppy disk
+    ; bios set dl to drive num
+    mov [ebr_drive_number], dl
+    mov ax, 1 ; 2nd sector from disk (lba = 1)
+    mov cl, 1 ; read 1 sector
+    mov bx, 0x7E00 ; data after bootloader
+    call disk_read
+
     ; print message
     mov si, msg_hello
     call puts
+    
+    cli ; disable interrupts to keep halt state
+    hlt 
 
-    hlt ; stop CPU execution
+; error handlers
 
 floppy_error:
     
@@ -179,6 +190,20 @@ disk_read:
     pop cx
     pop dx
     pop di
+    ret
+
+; disk_reset --- resets disk controller
+; params:
+; - dl: drive number
+
+disk_reset:
+
+    pusha
+    mov ah, 0
+    stc
+    int 13h
+    jc floppy_error
+    popa
     ret
 
 msg_hello: db "Hello world!", ENDL, 0 ; initialize string
