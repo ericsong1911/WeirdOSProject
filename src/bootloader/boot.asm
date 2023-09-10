@@ -32,7 +32,6 @@ ebr_system_id:             db 'FAT12   ' ; 8 bytes
 ; code
 
 start:
-
     jmp main
 
 ; puts --- prints a string to the screen
@@ -40,11 +39,13 @@ start:
 ; - ds:si points to string
 
 puts:
+
     ; save registers we will modify
     push si
     push ax
 
 .loop:
+
     lodsb ; loads next character in al
     or al, al ; sets zero flag if al null
     jz .done ; if zero flag set, finish program
@@ -55,11 +56,13 @@ puts:
     jmp .loop ; do it again
 
 .done:
+
     pop ax
     pop si
     ret ; program done
 
 main:
+
     ; setup data segments
     mov ax, 0    ; write a constant to ax since it can write to ds and es
     mov ds, ax
@@ -75,8 +78,21 @@ main:
 
     hlt ; stop CPU execution
 
+floppy_error:
+    
+    mov si, msg_read_error
+    call puts
+    jmp wait_and_reboot
+
+wait_and_reboot:
+
+    mov ah, 0
+    int 16h ; wait for keypress
+    jmp 0FFFFh:0 ; jump to beginning of bios
+
 .halt:
-    jmp .halt ; infinite loop in case processor restarts
+    cli ; disable interrupts to keep halt state
+    hlt
 
 ; disk routines
 
@@ -89,6 +105,7 @@ main:
 ; - dh: head
 
 lba_to_chs:
+
     push ax
     push dx
 
@@ -111,7 +128,61 @@ lba_to_chs:
     pop ax
     ret
 
+; disk_read --- reads sectors from a disk
+; params:
+; - ax: lba address
+; - cl: number of sectors to read
+; - dl: drive number
+; - es:bx memory address to store data
+
+disk_read:
+
+    ; save used registers
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+
+    push cx ; save cl for conversion function
+    call lba_to_chs ; compute chs
+    pop ax ; al = number of sectors to read
+
+    mov ah, 02h
+    mov di, 3 ; retry count
+
+.retry:
+
+    pusha ; save registers, bios does weird things to registers
+    stc ; set carry flag, some bios don't set it
+    int 13h ; carry flag cleared = success
+    jnc .done
+
+    ; if read failed
+    popa
+    call disk_reset
+
+    dec di
+    test di, di
+    jnz .retry
+
+.fail:
+    jmp floppy_error ; if attempts all fail
+
+.done:
+
+    popa
+
+    ; restore used registers
+    pop ax
+    pop bx
+    pop cx
+    pop dx
+    pop di
+    ret
+
 msg_hello: db "Hello world!", ENDL, 0 ; initialize string
+msg_read_error: db "Error - Floppy Read Failed!", ENDL, 0
 
 times 510-($-$$) db 0 ; fill up program with 510 bytes of padding, for the bios
 dw 0AA55h ; signature bytes, directive
