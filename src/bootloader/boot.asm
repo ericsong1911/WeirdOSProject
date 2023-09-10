@@ -78,6 +78,39 @@ main:
 .halt:
     jmp .halt ; infinite loop in case processor restarts
 
+; disk routines
+
+; lba_to_chs --- converts an lba address to a chs address
+; params:
+; - ax: lba address
+; returns:
+; - cx [bits 0-5]: sector number
+; - cx [bits 6-15]: cylinder
+; - dh: head
+
+lba_to_chs:
+    push ax
+    push dx
+
+    xor dx, dx ; dx = 0
+    div word [bdb_sectors_per_track] ; ax = lba / sectors per track
+                                     ; dx = lba % sectors per track
+    inc dx ; dx = (lba % sectors per track + 1) = sector
+    mov cx, dx ; cx = sector
+
+    xor dx, dx ; dx = 0
+    div word [bdb_heads] ; ax = (lba / sectors per track) / heads = cylinder
+                         ; dx = (lba / sectors per track) % heads = head
+    mov dh, dl ; dl = head
+    mov ch, al ; ch = cylinder (lower 8 bits)
+    shl ah, 6
+    or cl, ah ; put upper 2 bits of cylinder in cl
+
+    pop ax
+    mov dl, al ; restore dl
+    pop ax
+    ret
+
 msg_hello: db "Hello world!", ENDL, 0 ; initialize string
 
 times 510-($-$$) db 0 ; fill up program with 510 bytes of padding, for the bios
