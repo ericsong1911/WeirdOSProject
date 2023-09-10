@@ -11,6 +11,7 @@ If you do decide to build this project, you will need the following dependencies
 - make
 - nasm
 - qemu
+
 Run ./launchbuild.sh to build and launch the OS using QEMU.
 
 ## Bochs
