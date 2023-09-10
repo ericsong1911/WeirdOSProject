@@ -11,3 +11,11 @@ If you do decide to build this project, you will need the following dependencies
 - make
 - nasm
 - qemu
+Run ./launchbuild.sh to build and launch the OS using QEMU.
+
+## Bochs
+If you would like to debug using bochs, you may install the following:
+- bochs
+- bochs-sdl
+- bochsbios
+- vgabios
